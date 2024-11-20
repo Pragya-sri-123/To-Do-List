@@ -1,79 +1,102 @@
-class TodoList:
-    def __init__(self):
+import tkinter as tk
+from tkinter import messagebox
+
+class TodoApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("To-Do List App with Checkboxes")
+        self.root.geometry("400x400")
+
+        # Initialize task list and checkboxes list
         self.tasks = []
+        self.checkboxes = []
 
-    def add_task(self, task_description):
-        task = {
-            'description': task_description,
-            'status': 'pending'
-        }
-        self.tasks.append(task)
-        print(f"Task '{task_description}' added successfully.")
+        # Create GUI components
+        self.create_widgets()
 
-    def update_task(self, task_index, new_description=None, mark_done=False):
-        if 0 <= task_index < len(self.tasks):
-            if new_description:
-                self.tasks[task_index]['description'] = new_description
-            if mark_done:
-                self.tasks[task_index]['status'] = 'done'
-            print(f"Task {task_index + 1} updated successfully.")
+    def create_widgets(self):
+        # Task Entry Box
+        self.task_entry = tk.Entry(self.root, width=35)
+        self.task_entry.grid(row=0, column=0, padx=10, pady=10)
+
+        # Add Task Button
+        self.add_button = tk.Button(self.root, text="Add Task", width=20, command=self.add_task)
+        self.add_button.grid(row=0, column=1, padx=10, pady=10)
+
+        # Listbox to display tasks
+        self.task_frame = tk.Frame(self.root)
+        self.task_frame.grid(row=1, column=0, columnspan=2, padx=10, pady=10)
+
+        # Buttons for update and delete
+        self.update_button = tk.Button(self.root, text="Update Task", width=20, command=self.update_task)
+        self.update_button.grid(row=2, column=0, padx=10, pady=10)
+
+        self.delete_button = tk.Button(self.root, text="Delete Task", width=20, command=self.delete_task)
+        self.delete_button.grid(row=2, column=1, padx=10, pady=10)
+
+    def add_task(self):
+        task_description = self.task_entry.get()
+        if task_description != "":
+            task_index = len(self.tasks)
+            self.tasks.append({'description': task_description, 'status': False})  # False indicates not checked (pending)
+            self.add_task_to_gui(task_index)
+            self.task_entry.delete(0, tk.END)
         else:
-            print("Invalid task index.")
+            messagebox.showwarning("Input Error", "Please enter a task description.")
 
-    def delete_task(self, task_index):
-        if 0 <= task_index < len(self.tasks):
-            removed_task = self.tasks.pop(task_index)
-            print(f"Task '{removed_task['description']}' deleted successfully.")
-        else:
-            print("Invalid task index.")
+    def add_task_to_gui(self, task_index):
+        # Create a checkbox for the new task
+        checkbox_var = tk.BooleanVar()
+        checkbox = tk.Checkbutton(self.task_frame, text=self.tasks[task_index]['description'], variable=checkbox_var, command=lambda idx=task_index: self.toggle_task_status(idx, checkbox_var))
+        checkbox.grid(row=task_index, column=0, sticky="w", padx=10)
+        self.checkboxes.append(checkbox_var)
 
-    def view_tasks(self):
-        if not self.tasks:
-            print("No tasks to display.")
-            return
-        print("\nTo-Do List:")
-        for idx, task in enumerate(self.tasks, 1):
-            print(f"{idx}. {task['description']} - {task['status']}")
+    def toggle_task_status(self, task_index, checkbox_var):
+        # Update task status (checked or unchecked)
+        self.tasks[task_index]['status'] = checkbox_var.get()
 
-def main():
-    todo_list = TodoList()
+    def update_task(self):
+        try:
+            selected_task_index = self.get_selected_task_index()
+            new_description = self.task_entry.get()
 
-    while True:
-        print("\nTo-Do List Menu:")
-        print("1. Add task")
-        print("2. Update task")
-        print("3. Delete task")
-        print("4. View tasks")
-        print("5. Exit")
+            if new_description != "":
+                self.tasks[selected_task_index]['description'] = new_description
+                self.update_task_in_gui(selected_task_index)
+                self.task_entry.delete(0, tk.END)
+            else:
+                messagebox.showwarning("Input Error", "Please enter a new description.")
+        except IndexError:
+            messagebox.showwarning("Selection Error", "Please select a task to update.")
 
-        choice = input("Choose an option (1-5): ")
+    def update_task_in_gui(self, task_index):
+        # Update the task description in the GUI
+        for widget in self.task_frame.winfo_children():
+            widget.destroy()  # Clear previous checkboxes and labels
+        self.checkboxes.clear()  # Clear the checkbox list
+        for idx, task in enumerate(self.tasks):
+            self.add_task_to_gui(idx)
 
-        if choice == '1':
-            task_description = input("Enter task description: ")
-            todo_list.add_task(task_description)
-        elif choice == '2':
-            todo_list.view_tasks()
-            try:
-                task_index = int(input("Enter task number to update: ")) - 1
-                new_description = input("Enter new description (or leave blank to keep current): ")
-                mark_done = input("Mark as done? (yes/no): ").lower() == 'yes'
-                todo_list.update_task(task_index, new_description, mark_done)
-            except ValueError:
-                print("Invalid input, please enter a valid task number.")
-        elif choice == '3':
-            todo_list.view_tasks()
-            try:
-                task_index = int(input("Enter task number to delete: ")) - 1
-                todo_list.delete_task(task_index)
-            except ValueError:
-                print("Invalid input, please enter a valid task number.")
-        elif choice == '4':
-            todo_list.view_tasks()
-        elif choice == '5':
-            print("Exiting program.")
-            break
-        else:
-            print("Invalid option. Please choose a number between 1 and 5.")
+    def delete_task(self):
+        try:
+            selected_task_index = self.get_selected_task_index()
+            self.tasks.pop(selected_task_index)
+            self.update_task_in_gui(selected_task_index)
+        except IndexError:
+            messagebox.showwarning("Selection Error", "Please select a task to delete.")
 
-if __name__ == "__main__":
-    main()
+    def get_selected_task_index(self):
+        # Get the index of the task selected (based on the checkbox index)
+        for idx, checkbox_var in enumerate(self.checkboxes):
+            if checkbox_var.get():
+                return idx
+        raise IndexError("No task selected.")
+
+# Create the main window
+root = tk.Tk()
+
+# Initialize the TodoApp
+app = TodoApp(root)
+
+# Run the application
+root.mainloop()
